@@ -1,0 +1,22 @@
+# Prompt string
+PROMPT="%B%F{35}%~%f%b%B%F{208}| > | %f%b"
+RPROMPT="%K{245}%F{15}[Last command returned %f%k(%B%K{white}%F{black}%?%f%k%b)] [%F{141}%n%f%F{132}@%f%F{206}%m%f] [%F{68}%*%f]"
+
+## Navigate with arrow keys
+bindkey "^[[1;5C" forward-word
+bindkey "^[[1;5D" backward-word
+
+## Backward search with Control + R
+bindkey '^R' history-incremental-search-backward
+
+## Case-insensitive completion
+autoload -Uz compinit && compinit
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+
+HISTFILE=~/.zsh_history
+HISTSIZE=100000
+SAVEHIST=100000
+setopt INC_APPEND_HISTORY_TIME
+
+bindkey "^[[A" history-beginning-search-backward
+bindkey "^[[B" history-beginning-search-forward
