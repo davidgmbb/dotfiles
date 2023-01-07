@@ -1,0 +1,22 @@
+[user]
+    name = David Gonzalez Martin
+    email = davidgm94.work@protonmail.com
+    username = davidgm94
+[core]
+    editor = nvim
+    lf = open
+    eol = lf
+    autocrlf = false
+[github]
+    user = davidgm94
+[init]
+    defaultBranch = main
+[filter "lfs"]
+    clean = git-lfs clean -- %f
+    smudge = git-lfs smudge -- %f
+    process = git-lfs filter-process
+    required = true
+[credential]
+    helper = store
+[push]
+    autoSetupRemote = true

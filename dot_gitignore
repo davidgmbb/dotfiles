@@ -1,0 +1,4 @@
+*
+!dev/.gitkeep
+!programs/.gitkeep
+!.config/nvim
