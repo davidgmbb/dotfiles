@@ -1,0 +1,74 @@
+## PATH-RELATED VARIABLES
+# Homebrew-related paths
+export MY_HOMEBREW_BIN_PATH="/opt/homebrew/bin"
+export MY_HOMEBREW_SBIN_PATH="/opt/homebrew/sbin"
+export MY_HOMEBREW_RELATED_PATHS=$MY_HOMEBREW_BIN_PATH:$MY_HOMEBREW_SBIN_PATH
+
+export MY_ZIG_RELATIVE_BIN_PATH=zig-out/bin
+# Zig-related paths
+export MY_ZLS_SOURCE_PATH="$HOME/dev/zls"
+export MY_ZLS_SOURCE_BIN_PATH="$MY_ZLS_SOURCE_PATH/$MY_ZIG_RELATIVE_BIN_PATH"
+export MY_ZIGUP_SOURCE_PATH="$HOME/dev/zigup"
+export MY_ZIGUP_SOURCE_BIN_PATH="$MY_ZIGUP_SOURCE_PATH/$MY_ZIG_RELATIVE_BIN_PATH"
+export MY_ZIG_SOURCE_PATH="$HOME/dev/zig"
+export MY_ZIG_SOURCE_BIN_PATH="$MY_ZIG_SOURCE_PATH/stage3/bin"
+export MY_ZIG_RELATED_PATHS=$MY_ZLS_BIN_PATH:$MY_ZIG_BIN_PATH:$MY_ZIG_SOURCE_BIN_PATH
+
+# Neovim-related paths
+export MY_NEOVIM_SOURCE_PATH="$HOME/dev/neovim"
+
+# GF-related paths
+export MY_GF_SOURCE_PATH="$HOME/dev/gf"
+
+# My scripts path
+export MY_SCRIPTS_PATH="$HOME/dev/scripts"
+
+# PATH
+export PATH="$MY_GF_SOURCE_PATH:$MY_ZIG_RELATED_PATHS:$MY_HOMEBREW_BIN_PATH:$MY_SCRIPTS_PATH:$PATH"
+
+## PERSONAL PROJECTS
+export MY_RISE_PATH="$HOME/dev/rise"
+
+## SYSTEM ENVIRONMENT VARIABLES
+export EDITOR=nvim
+
+# Uni stuff
+export _JAVA_AWT_WM_NONREPARENTING=1
+export CLASSPATH="$HOME/Documents/uni/compiladores/lib:$HOME/Documents/uni/compiladores/20221PAC3"
+export CMAKE_GENERATOR=Ninja
+
+
+## ALIASES
+# Function-like aliases
+function ccd() {
+    mkdir -p $1 && cd $1
+}
+
+# Zig-related aliases
+alias zb="zig build"
+alias zr="zig build run"
+alias zd="zig build debug"
+alias zt="zig build test"
+# Use the Zig source binary
+alias zigs="$MY_ZIG_SOURCE_BIN_PATH/zig"
+
+alias zig_update_bin="zigup master"
+alias cdz="cd $MY_ZIG_SOURCE_PATH"
+
+# Chezmoi-related aliases
+alias hm="chezmoi"
+
+# Personal projects related aliases
+alias cdr="cd $MY_RISE_PATH"
+
+# Git aliases
+alias gi="git init"
+alias gco="git commit"
+alias ga="git add ."
+alias gpl="git pull"
+alias gp="git push"
+alias gd="git diff"
+alias gl="git log"
+alias gs="git status"
+alias gc="git clone"
+
