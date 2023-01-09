@@ -1,4 +1,14 @@
 *
 !dev/.gitkeep
 !programs/.gitkeep
+!.config/dwm
+!.config/fish
+!.config/gtk-3.0
+!.config/kitty
+!.config/nushell
 !.config/nvim
+!.config/river
+!.config/sway
+!.config/wezterm
+!.config/gf2_config.ini
+!.config/zls.json
