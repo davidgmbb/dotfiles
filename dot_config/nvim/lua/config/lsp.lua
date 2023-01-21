@@ -52,7 +52,7 @@ lsp.on_attach(function(client, bufnr)
   vim.keymap.set('i', '<C-h>', function() vim.lsp.buf.signature_help() end, opts) -- restart lsp
 
   vim.keymap.set('n', '<leader>cd', function() vim.lsp.diagnostic.show_line_diagnostics() end, opts) -- line diagnostics
-  vim.keymap.set('n', '<leader>fo', function() vim.lsp.buf.format { async = false } end, opts) -- formatting
+  vim.keymap.set('n', '<leader>fo', function() vim.lsp.buf.format { async = true } end, opts) -- formatting
   --vim.keymap.set('n', '<leader>re', function() vim.cmd#'LspRestart' end', opts) -- restart lsp
   vim.keymap.set('n', '<leader>ql', function() vim.diagnostic.setloclist() end, opts) -- buffer diagnostics to location list
   vim.keymap.set('n', '<leader>qf', function() vim.diagnostic.setqflist() end, opts) -- all diagnostics to quickfix list
