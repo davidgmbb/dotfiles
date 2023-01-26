@@ -25,6 +25,7 @@ vim.cmd[[colorscheme tokyonight]]
 local telescope_builtin = require('telescope.builtin')
 vim.keymap.set('n', '<leader>d', telescope_builtin.find_files, {})
 vim.keymap.set('n', '<leader>f', telescope_builtin.git_files, {})
-vim.keymap.set('n', '<leader>g', function()
-	telescope_builtin.grep_string({ search = vim.fn.expand("<cword>") })
-end)
+vim.keymap.set('n', '<leader>g', telescope_builtin.live_grep, {})
+
+-- vim.keymap.set('n', '<leader>ql', vim.diagnostic.getql, {})
+vim.keymap.set('n', '<leader>qf', function() vim.cmd('copen') end, {})
