@@ -11,18 +11,20 @@ vim.opt.showcmd = true
 vim.opt.ignorecase = true
 vim.opt.smartcase = true
 vim.opt.cursorline = true
+vim.opt.relativenumber = true
 vim.opt.ai = true
 vim.opt.si = true
 vim.opt.foldenable = false
+vim.opt.linebreak = true
+vim.opt.breakindent = true
 vim.opt.backup = false
 vim.opt.swapfile = false
 vim.opt.undofile = false
-vim.opt.relativenumber = true
 vim.g.mapleader = " "
 vim.opt.completeopt = "menuone,noinsert,noselect"
 -- Avoid showing extra messages when using completion
 vim.opt.signcolumn= "yes"
-vim.opt.updatetime = 300
+vim.opt.updatetime = 50
 vim.opt.background = "dark"
 
 vim.keymap.set('n', 'g[', ':lprev<CR>', {})
@@ -42,6 +44,9 @@ if not has_lazy then
 end
 vim.opt.rtp:prepend(lazypath)
 
+vim.g.vimtex_view_method = 'zathura'
+vim.g.vimtex_compiler_method = 'latexrun'
+
 require("lazy").setup({
     { 'ellisonleao/gruvbox.nvim' },
 
@@ -53,11 +58,13 @@ require("lazy").setup({
     { 'hrsh7th/cmp-buffer'},
 
     { "nvim-telescope/telescope.nvim", dependencies = { { "nvim-lua/popup.nvim", lazy = false }, { "nvim-lua/plenary.nvim", lazy = false } } },
-    { "nvim-treesitter/nvim-treesitter", },
+    -- { 'nvim-treesitter/nvim-treesitter', build = ':TSUpdate' },
 
     { "numToStr/Comment.nvim", config = function() require("Comment").setup() end, },
 
     { "ziglang/zig.vim" },
+
+    { "lervag/vimtex" },
 }, {})
 
 
@@ -111,11 +118,12 @@ cmp.setup({
   },
 })
 
-require'nvim-treesitter.configs'.setup {
-  highlight = {
-    enable = true
-  },
-}
+-- require'nvim-treesitter.configs'.setup {
+--   highlight = {
+--     enable = false,
+--     disable = true,
+--   },
+-- }
 
 vim.cmd 'colorscheme gruvbox'
 

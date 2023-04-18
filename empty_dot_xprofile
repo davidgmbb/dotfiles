@@ -1,6 +1,6 @@
 #!/bin/sh
 
-[[ -f ~/dev/scripts/screen.sh ]] && source ~/dev/scripts/screen.sh
+[[ -f ~/dev/scripts/screen.sh ]] && source ~/dev/scripts/screen_ara.sh
 [[ -f ~/.Xresources ]] && xrdb -merge -I$HOME ~/.Xresources
 dwmstatus 2>&1 >/dev/null &
 /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &

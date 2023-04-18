@@ -179,7 +179,7 @@ typedef enum MyLocation {
     Mexico,
 } MyLocation;
 
-MyLocation location = Mexico;
+MyLocation location = Spain;
 
 int
 main(void)
