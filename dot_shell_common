@@ -37,7 +37,7 @@ export EDITOR=nvim
 
 # Uni stuff
 export _JAVA_AWT_WM_NONREPARENTING=1
-export CLASSPATH="$HOME/Documents/uni/compiladores/lib:$HOME/Documents/uni/compiladores/20221PAC3"
+#export CLASSPATH="$HOME/Documents/uni/compiladores/lib:$HOME/Documents/uni/compiladores/20221PAC3"
 export CMAKE_GENERATOR=Ninja
 
 
