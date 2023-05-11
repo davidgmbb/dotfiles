@@ -11,9 +11,8 @@ export MY_ZIG_RELATIVE_BIN_PATH="zig-out/bin"
 # Zig-related paths
 export MY_ZLS_SOURCE_PATH="$MY_DEV_DIR/zls"
 export MY_ZLS_SOURCE_BIN_PATH="$MY_ZLS_SOURCE_PATH/$MY_ZIG_RELATIVE_BIN_PATH"
-export MY_ZIGUP_BIN_PATH="$MY_DEV_DIR/zigup"
 export MY_ZIG_SOURCE_PATH="$MY_DEV_DIR/zig"
-export MY_ZIG_SOURCE_BIN_PATH="$MY_ZIG_SOURCE_PATH/build/stage3/bin"
+export MY_ZIG_SOURCE_BIN_PATH="$MY_ZIG_SOURCE_PATH/build-release/stage3/bin"
 export MY_ZIG_RELATED_PATHS=$MY_ZIG_SOURCE_BIN_PATH:$MY_ZIGUP_BIN_PATH:$MY_ZLS_SOURCE_BIN_PATH
 
 # Neovim-related paths

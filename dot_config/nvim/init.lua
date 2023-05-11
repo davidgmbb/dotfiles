@@ -15,7 +15,7 @@ vim.opt.relativenumber = true
 vim.opt.ai = true
 vim.opt.si = true
 vim.opt.foldenable = false
-vim.opt.linebreak = true
+vim.opt.linebreak = false
 vim.opt.breakindent = true
 vim.opt.backup = false
 vim.opt.swapfile = false
@@ -64,9 +64,14 @@ require("lazy").setup({
 
     { "ziglang/zig.vim" },
 
-    { "lervag/vimtex" },
-}, {})
+    { "lewis6991/gitsigns.nvim", config = function() require("gitsigns").setup() end, },
+    { 'f-person/git-blame.nvim' },
+    -- { "folke/trouble.nvim", dependencies = { { "nvim-tree/nvim-web-devicons", lazy = false } }, config = function() require("trouble").setup() end },
+    -- { "folke/lsp-colors.nvim" },
+})
 
+vim.o.background = "dark" -- or "light" for light mode
+vim.cmd([[colorscheme gruvbox]])
 
 local nvim_lsp = require'lspconfig'
 
@@ -79,7 +84,7 @@ vim.keymap.set('n', 'gr', function() vim.lsp.buf.references() end, lsp_keymap_op
 vim.keymap.set('n', 'g0', function() vim.lsp.buf.document_symbol() end, lsp_keymap_opts)
 vim.keymap.set('n', 'gW', function() vim.lsp.buf.workspace_symbol() end, lsp_keymap_opts)
 vim.keymap.set('n', 'gd', function() vim.lsp.buf.definition() end, lsp_keymap_opts)
-vim.keymap.set('n', 'ge', function() vim.diagnostic.setqflist() end, lsp_keymap_opts)
+vim.keymap.set('n', 'ge', function() vim.diagnostic.goto_next() end, lsp_keymap_opts)
 vim.keymap.set('n', 'ga', function() vim.lsp.buf.code_action() end, lsp_keymap_opts)
 vim.keymap.set('n', 'gh', ':ClangdSwitchSourceHeader<CR>', lsp_keymap_opts)
 
@@ -117,15 +122,6 @@ cmp.setup({
     { name = 'buffer' },
   },
 })
-
--- require'nvim-treesitter.configs'.setup {
---   highlight = {
---     enable = false,
---     disable = true,
---   },
--- }
-
-vim.cmd 'colorscheme gruvbox'
 
 local telescope_builtin = require('telescope.builtin')
 

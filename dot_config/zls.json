@@ -1,4 +1,4 @@
 {
-    "enable_autofix": false,
+    "enable_autofix": true,
     "semantic_tokens": "none"
 }
