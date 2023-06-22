@@ -30,6 +30,7 @@ export PATH="$MY_NEOVIM_BIN_PATH:$MY_GF_SOURCE_PATH:$MY_ZIG_RELATED_PATHS:$MY_HO
 
 ## PERSONAL PROJECTS
 export MY_RISE_PATH="$MY_DEV_DIR/rise"
+export MY_BARRELFISH_PATH="$MY_DEV_DIR/barrelfish"
 
 ## SYSTEM ENVIRONMENT VARIABLES
 export EDITOR=nvim
@@ -55,13 +56,14 @@ alias zt="zig build test"
 alias zigs="$MY_ZIG_SOURCE_BIN_PATH/zig"
 
 alias zig_update_bin="zigup master"
-alias cdz="cd $MY_ZIG_SOURCE_PATH"
 
 # Chezmoi-related aliases
 alias hm="chezmoi"
 
 # Personal projects related aliases
 alias cdr="cd $MY_RISE_PATH"
+alias cdz="cd $MY_ZIG_SOURCE_PATH"
+alias cdb="cd $MY_BARRELFISH_PATH"
 
 # Git aliases
 alias gi="git init"
