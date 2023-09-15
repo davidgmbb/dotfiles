@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -ex
 
 if [ "$#" -ne 1 ]; then
@@ -22,7 +22,7 @@ else
 fi
 
 source $HOME/dev/scripts/llvm-common.sh
-MY_LLVM_SOURCE_DIR="/home/david/dev/llvm-project-$MY_LLVM_VERSION"
+MY_LLVM_SOURCE_DIR="/home/david/source/llvm-project-$MY_LLVM_VERSION"
 
 git clone --depth 1 --branch "release/$MY_LLVM_VERSION.x" https://github.com/llvm/llvm-project $MY_LLVM_SOURCE_DIR
 cd $MY_LLVM_SOURCE_DIR
@@ -35,7 +35,7 @@ export CC="clang"
 export CXX="clang++"
 
 cmake ../llvm \
-  -DCMAKE_INSTALL_PREFIX=$HOME/local/llvm$MY_LLVM_VERSION-$MY_OPTIMIZATION_MODE \
+  -DCMAKE_INSTALL_PREFIX=$HOME/programs/llvm$MY_LLVM_VERSION-$MY_OPTIMIZATION_MODE \
   -DCMAKE_BUILD_TYPE=$MY_CMAKE_OPTIMIZATION_MODE \
   -DLLVM_ENABLE_PROJECTS="lld;clang" \
   -DLLVM_ENABLE_LIBXML2=OFF \
