@@ -9,6 +9,8 @@ export MY_DEV_DIR="$HOME/dev"
 # This is meant for code that is meant to be only compiled, not developed
 export MY_SOURCE_DIR="$HOME/source"
 export MY_INSTALLATION_DIR="$HOME/installed"
+export MY_PROGRAMS_DIR="$HOME/programs"
+export MY_PROGRAMS_BIN_DIR="$MY_PROGRAMS_DIR/bin"
 
 export MY_ZIG_RELATIVE_BIN_PATH="zig-out/bin"
 # Zig-related paths
@@ -28,7 +30,7 @@ export MY_GF_SOURCE_PATH="/$HOME/source/gf"
 export MY_SCRIPTS_PATH="$MY_DEV_DIR/scripts"
 
 # PATH
-export PATH="$MY_QEMU_BIN_PATH:$MY_NEOVIM_BIN_PATH:$MY_GF_SOURCE_PATH:$MY_ZIG_RELATED_PATHS:$MY_HOMEBREW_BIN_PATH:$MY_SCRIPTS_PATH:$PATH"
+export PATH="$MY_PROGRAMS_BIN_DIR:$MY_QEMU_BIN_PATH:$MY_NEOVIM_BIN_PATH:$MY_GF_SOURCE_PATH:$MY_ZIG_RELATED_PATHS:$MY_HOMEBREW_BIN_PATH:$MY_SCRIPTS_PATH:$PATH"
 
 ## PERSONAL PROJECTS
 export MY_RISE_PATH="$MY_DEV_DIR/rise"
