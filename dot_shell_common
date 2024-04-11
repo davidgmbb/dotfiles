@@ -6,6 +6,7 @@ export MY_HOMEBREW_SBIN_PATH="$MY_HOMEBREW_ROOT_PATH/sbin"
 export MY_HOMEBREW_RELATED_PATHS=$MY_HOMEBREW_BIN_PATH:$MY_HOMEBREW_SBIN_PATH
 
 export MY_DEV_DIR="$HOME/dev"
+export MY_NAT_SRC_DIR="$MY_DEV_DIR/nativity"
 # This is meant for code that is meant to be only compiled, not developed
 export MY_SOURCE_DIR="$HOME/source"
 export MY_INSTALLATION_DIR="$HOME/installed"
@@ -29,8 +30,11 @@ export MY_GF_SOURCE_PATH="/$HOME/source/gf"
 # My scripts path
 export MY_SCRIPTS_PATH="$MY_DEV_DIR/scripts"
 
+# Nat path
+export MY_NAT_PATH="$MY_NAT_SRC_DIR/zig-out/bin"
+
 # PATH
-export PATH="$MY_PROGRAMS_BIN_DIR:$MY_QEMU_BIN_PATH:$MY_NEOVIM_BIN_PATH:$MY_GF_SOURCE_PATH:$MY_ZIG_RELATED_PATHS:$MY_HOMEBREW_BIN_PATH:$MY_SCRIPTS_PATH:$PATH"
+export PATH="$MY_NAT_PATH:$MY_PROGRAMS_BIN_DIR:$MY_QEMU_BIN_PATH:$MY_NEOVIM_BIN_PATH:$MY_GF_SOURCE_PATH:$MY_ZIG_RELATED_PATHS:$MY_HOMEBREW_BIN_PATH:$MY_SCRIPTS_PATH:$PATH"
 
 ## PERSONAL PROJECTS
 export MY_RISE_PATH="$MY_DEV_DIR/rise"
@@ -41,7 +45,7 @@ export EDITOR=nvim
 
 # Uni stuff
 export _JAVA_AWT_WM_NONREPARENTING=1
-#export CLASSPATH="$HOME/Documents/uni/compiladores/lib:$HOME/Documents/uni/compiladores/20221PAC3"
+export CLASSPATH="$HOME/Documents/uni/compiladores/lib:$HOME/Documents/uni/compiladores/20231PAC3"
 export CMAKE_GENERATOR=Ninja
 
 
@@ -52,10 +56,10 @@ function ccd() {
 }
 
 # Zig-related aliases
-alias zb="zig build"
-alias zr="zig build run"
-alias zd="zig build debug"
-alias zt="zig build test"
+alias zb="zig build --prominent-compile-errors"
+alias zr="zig build run --prominent-compile-errors"
+alias zd="zig build debug --prominent-compile-errors"
+alias zt="zig build test --prominent-compile-errors"
 # Use the Zig source binary
 alias zigs="$MY_ZIG_SOURCE_BIN_PATH/zig"
 
@@ -91,6 +95,8 @@ alias l='ls -CF'
 alias grep='grep --color=auto'
 alias fgrep='fgrep --color=auto'
 alias egrep='egrep --color=auto'
+
+alias cdn="cd $MY_NAT_SRC_DIR"
 
 gcgh() {
     GH_USER="$1"

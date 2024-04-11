@@ -90,6 +90,7 @@ vim.keymap.set('n', 'gh', ':ClangdSwitchSourceHeader<CR>', lsp_keymap_opts)
 
 nvim_lsp.zls.setup{}
 nvim_lsp.clangd.setup{}
+nvim_lsp.rust_analyzer.setup{}
 
 local cmp = require'cmp'
 cmp.setup({
