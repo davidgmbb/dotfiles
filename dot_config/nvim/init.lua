@@ -66,7 +66,12 @@ require("lazy").setup({
 
     { "lewis6991/gitsigns.nvim", config = function() require("gitsigns").setup() end, },
     { 'f-person/git-blame.nvim' },
-    { "folke/trouble.nvim", dependencies = { { "nvim-tree/nvim-web-devicons", lazy = false } }, config = function() require("trouble").setup() end },
+    {
+        "folke/trouble.nvim",
+        opts = {
+            auto_close = true
+        },
+    } 
     -- { "folke/lsp-colors.nvim" },
 })
 
@@ -131,18 +136,22 @@ vim.keymap.set('n', '<leader>f', telescope_builtin.git_files, {})
 vim.keymap.set('n', '<leader>g', telescope_builtin.live_grep, {})
 vim.keymap.set('n', '<leader>r', telescope_builtin.resume, {})
 
+local function get_time_in_milliseconds()
+    local sec, usec = vim.loop.gettimeofday()
+    return (sec * 1000) + (usec / 1000)
+end
+
 local function compile_common(compile_command)
+  local start_time = get_time_in_milliseconds()
   vim.cmd(compile_command) -- Run :make
-  local exit_code = vim.v.shell_error
-  local qf_exists = not vim.tbl_isempty(vim.fn.getqflist({ items = 1 }).items)
-  if qf_exists then
-      vim.cmd("Trouble qflist toggle") -- Open the quickfix list if there are errors
+  local end_time = get_time_in_milliseconds()
+  local qf_list = vim.fn.getqflist()
+  local qf_list_items = #qf_list
+  if qf_list_items > 0 then
+      vim.cmd("Trouble qflist open") -- Open the quickfix list if there are errors
   end
-  if exit_code ~= 0 then
-      return false
-  else
-      return true
-  end
+
+  print(string.format("Compiled in %.02f ms", end_time - start_time))
 end
 
 local function just_compile()
