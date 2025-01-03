@@ -170,7 +170,7 @@ local os_string = vim.loop.os_uname().sysname
 if os_string == "Windows" then
     vim.opt.makeprg = "build.bat"
 else
-    vim.opt.makeprg = "./build.c"
+    vim.opt.makeprg = "./build.sh"
 end
 
 vim.keymap.set('n', '<leader>c', just_compile, {})
