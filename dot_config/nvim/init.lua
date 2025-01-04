@@ -166,8 +166,8 @@ local function compile_and_debug()
     compile_common("silent! make debug")
 end
 
-local os_string = vim.loop.os_uname().sysname
-if os_string == "Windows" then
+if vim.fn.has 'win32' == 1 then
+    vim.opt.errorformat = "%f(%l\\,%c):%t%*[^:]:%m"
     vim.opt.makeprg = "build.bat"
 else
     vim.opt.makeprg = "./build.sh"
