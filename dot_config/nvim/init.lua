@@ -142,6 +142,7 @@ local function get_time_in_milliseconds()
 end
 
 local function compile_common(compile_command)
+  vim.cmd("wa")
   local start_time = get_time_in_milliseconds()
   vim.cmd(compile_command) -- Run :make
   local end_time = get_time_in_milliseconds()
