@@ -1,14 +1,14 @@
 [user]
     name = David Gonzalez Martin
-    email = davidgm94.work@protonmail.com
-    username = davidgm94
+    email = davidgmbb@gmail.com
+    username = davidgmbb
 [core]
     editor = nvim
     lf = open
     eol = lf
     autocrlf = false
 [github]
-    user = davidgm94
+    user = davidgmbb
 [init]
     defaultBranch = main
 [filter "lfs"]
