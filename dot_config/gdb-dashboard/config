@@ -1,0 +1,16 @@
+set disassembly-flavor intel
+set debuginfod enabled on
+
+define hookpost-up
+  dashboard
+end
+
+define hookpost-down
+  dashboard
+end
+
+define hookpost-frame
+  dashboard
+end
+
+dashboard -layout registers assembly source !variables stack
