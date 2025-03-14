@@ -50,9 +50,9 @@ vim.g.vimtex_compiler_method = 'latexrun'
 require("lazy").setup({
     { 'ellisonleao/gruvbox.nvim' },
 
-    -- { 'neovim/nvim-lspconfig' },
+    { 'neovim/nvim-lspconfig' },
     { 'hrsh7th/nvim-cmp'},
-    -- { 'hrsh7th/cmp-nvim-lsp'},
+    { 'hrsh7th/cmp-nvim-lsp'},
     { 'hrsh7th/cmp-vsnip'},
     { 'hrsh7th/cmp-path'},
     { 'hrsh7th/cmp-buffer'},
@@ -78,24 +78,24 @@ require("lazy").setup({
 vim.o.background = "dark" -- or "light" for light mode
 vim.cmd([[colorscheme gruvbox]])
 
--- local nvim_lsp = require'lspconfig'
+local nvim_lsp = require'lspconfig'
 
--- local lsp_keymap_opts = {}
--- vim.keymap.set('n', 'K', function() vim.lsp.buf.hover() end, lsp_keymap_opts)
--- vim.keymap.set('n', 'gD', function() vim.lsp.buf.implementation() end, lsp_keymap_opts)
--- vim.keymap.set('n', '<c-k>', function() vim.lsp.buf.signature_help() end, lsp_keymap_opts)
--- vim.keymap.set('n', '1gD', function() vim.lsp.buf.type_definition() end, lsp_keymap_opts)
--- vim.keymap.set('n', 'gr', function() vim.lsp.buf.references() end, lsp_keymap_opts)
--- vim.keymap.set('n', 'g0', function() vim.lsp.buf.document_symbol() end, lsp_keymap_opts)
--- vim.keymap.set('n', 'gW', function() vim.lsp.buf.workspace_symbol() end, lsp_keymap_opts)
--- vim.keymap.set('n', 'gd', function() vim.lsp.buf.definition() end, lsp_keymap_opts)
--- vim.keymap.set('n', 'ge', function() vim.diagnostic.goto_next() end, lsp_keymap_opts)
--- vim.keymap.set('n', 'ga', function() vim.lsp.buf.code_action() end, lsp_keymap_opts)
--- vim.keymap.set('n', 'gh', ':ClangdSwitchSourceHeader<CR>', lsp_keymap_opts)
+local lsp_keymap_opts = {}
+vim.keymap.set('n', 'K', function() vim.lsp.buf.hover() end, lsp_keymap_opts)
+vim.keymap.set('n', 'gD', function() vim.lsp.buf.implementation() end, lsp_keymap_opts)
+vim.keymap.set('n', '<c-k>', function() vim.lsp.buf.signature_help() end, lsp_keymap_opts)
+vim.keymap.set('n', '1gD', function() vim.lsp.buf.type_definition() end, lsp_keymap_opts)
+vim.keymap.set('n', 'gr', function() vim.lsp.buf.references() end, lsp_keymap_opts)
+vim.keymap.set('n', 'g0', function() vim.lsp.buf.document_symbol() end, lsp_keymap_opts)
+vim.keymap.set('n', 'gW', function() vim.lsp.buf.workspace_symbol() end, lsp_keymap_opts)
+vim.keymap.set('n', 'gd', function() vim.lsp.buf.definition() end, lsp_keymap_opts)
+vim.keymap.set('n', 'ge', function() vim.diagnostic.goto_next() end, lsp_keymap_opts)
+vim.keymap.set('n', 'ga', function() vim.lsp.buf.code_action() end, lsp_keymap_opts)
+vim.keymap.set('n', 'gh', ':ClangdSwitchSourceHeader<CR>', lsp_keymap_opts)
 
--- nvim_lsp.zls.setup{}
--- nvim_lsp.clangd.setup{}
--- nvim_lsp.rust_analyzer.setup{}
+nvim_lsp.zls.setup{}
+nvim_lsp.clangd.setup{}
+nvim_lsp.rust_analyzer.setup{}
 
 local cmp = require'cmp'
 cmp.setup({
