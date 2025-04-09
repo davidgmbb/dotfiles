@@ -62,7 +62,7 @@ require("lazy").setup({
 
     { "numToStr/Comment.nvim", config = function() require("Comment").setup() end, },
 
-    { "ziglang/zig.vim" },
+    -- { "ziglang/zig.vim" },
 
     { "lewis6991/gitsigns.nvim", config = function() require("gitsigns").setup() end, },
     { 'f-person/git-blame.nvim' },
@@ -96,6 +96,7 @@ vim.keymap.set('n', 'gh', ':ClangdSwitchSourceHeader<CR>', lsp_keymap_opts)
 nvim_lsp.zls.setup{}
 nvim_lsp.clangd.setup{}
 nvim_lsp.rust_analyzer.setup{}
+nvim_lsp.ols.setup{}
 
 local cmp = require'cmp'
 cmp.setup({
