@@ -26,6 +26,7 @@ vim.opt.completeopt = "menuone,noinsert,noselect"
 vim.opt.signcolumn= "yes"
 vim.opt.updatetime = 50
 vim.opt.background = "dark"
+vim.opt.statusline = "%f [byte:%o] %l,%c"
 
 vim.keymap.set('n', 'g[', ':lprev<CR>', {})
 vim.keymap.set('n', 'g]', ':lnext<CR>', {})
@@ -160,21 +161,11 @@ local function just_compile()
     compile_common("silent! make")
 end
 
-local function compile_and_test()
-    compile_common("silent! make test")
-end
-
-local function compile_and_debug()
-    compile_common("silent! make debug")
-end
-
 if vim.fn.has 'win32' == 1 then
     vim.opt.errorformat = "%f(%l\\,%c):%t%*[^:]:%m"
-    vim.opt.makeprg = "build.bat"
+    vim.opt.makeprg = "build.py"
 else
-    vim.opt.makeprg = "./build.sh"
+    vim.opt.makeprg = "./build.py"
 end
 
 vim.keymap.set('n', '<leader>c', just_compile, {})
-vim.keymap.set('n', '<leader>t', compile_and_test, {})
-vim.keymap.set('n', '<leader>d', compile_and_debug, {})
