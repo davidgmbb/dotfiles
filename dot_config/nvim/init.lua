@@ -79,8 +79,6 @@ require("lazy").setup({
 vim.o.background = "dark" -- or "light" for light mode
 vim.cmd([[colorscheme gruvbox]])
 
-local nvim_lsp = require'lspconfig'
-
 local lsp_keymap_opts = {}
 vim.keymap.set('n', 'K', function() vim.lsp.buf.hover() end, lsp_keymap_opts)
 vim.keymap.set('n', 'gD', function() vim.lsp.buf.implementation() end, lsp_keymap_opts)
@@ -94,10 +92,10 @@ vim.keymap.set('n', 'ge', function() vim.diagnostic.goto_next() end, lsp_keymap_
 vim.keymap.set('n', 'ga', function() vim.lsp.buf.code_action() end, lsp_keymap_opts)
 vim.keymap.set('n', 'gh', ':ClangdSwitchSourceHeader<CR>', lsp_keymap_opts)
 
-nvim_lsp.zls.setup{}
-nvim_lsp.clangd.setup{}
-nvim_lsp.rust_analyzer.setup{}
-nvim_lsp.ols.setup{}
+vim.lsp.enable('zls')
+vim.lsp.enable('clangd')
+vim.lsp.enable('rust_analyzer')
+vim.lsp.enable('ols')
 
 local cmp = require'cmp'
 cmp.setup({
