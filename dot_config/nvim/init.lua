@@ -163,7 +163,7 @@ if vim.fn.has 'win32' == 1 then
     vim.opt.errorformat = "%f(%l\\,%c):%t%*[^:]:%m"
     vim.opt.makeprg = "build.py"
 else
-    vim.opt.makeprg = "./build.py"
+    vim.opt.makeprg = "./build.c"
 end
 
 vim.keymap.set('n', '<leader>c', just_compile, {})
