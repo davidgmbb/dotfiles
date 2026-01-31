@@ -90,7 +90,8 @@ vim.keymap.set('n', 'gW', function() vim.lsp.buf.workspace_symbol() end, lsp_key
 vim.keymap.set('n', 'gd', function() vim.lsp.buf.definition() end, lsp_keymap_opts)
 vim.keymap.set('n', 'ge', function() vim.diagnostic.goto_next() end, lsp_keymap_opts)
 vim.keymap.set('n', 'ga', function() vim.lsp.buf.code_action() end, lsp_keymap_opts)
-vim.keymap.set('n', 'gh', ':ClangdSwitchSourceHeader<CR>', lsp_keymap_opts)
+vim.keymap.set('n', 'gh', '<cmd>LspClangdSwitchSourceHeader<CR>', lsp_keymap_opts)
+
 
 vim.lsp.enable('zls')
 vim.lsp.enable('clangd')
