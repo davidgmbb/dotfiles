@@ -13,4 +13,7 @@ define hookpost-frame
   dashboard
 end
 
-dashboard -layout registers assembly source !variables stack
+dashboard -layout !registers assembly source !variables stack
+
+dashboard assembly -style height 6
+dashboard source -style height 20
