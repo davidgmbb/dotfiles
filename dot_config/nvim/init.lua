@@ -66,7 +66,7 @@ require("lazy").setup({
   },
   { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
   { "numToStr/Comment.nvim", config = function() require("Comment").setup() end },
-  { "ziglang/zig.vim" },
+  -- { "ziglang/zig.vim" },
   { "lewis6991/gitsigns.nvim", config = function() require("gitsigns").setup() end },
   { "f-person/git-blame.nvim" },
   {
