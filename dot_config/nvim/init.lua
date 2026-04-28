@@ -92,11 +92,18 @@ vim.lsp.config("zls", {
 })
 
 vim.lsp.config("clangd", {
-  capabilities = capabilities,
+    capabilities = capabilities,
 })
 
 vim.lsp.config("rust_analyzer", {
-  capabilities = capabilities,
+    capabilities = capabilities,
+    settings = {
+        ["rust-analyzer"] = {
+            check = {
+                allTargets = false,
+            },
+        },
+    },
 })
 
 vim.lsp.config("ols", {
@@ -149,7 +156,7 @@ vim.keymap.set('n', 'gr', function() vim.lsp.buf.references() end, lsp_keymap_op
 vim.keymap.set('n', 'g0', function() vim.lsp.buf.document_symbol() end, lsp_keymap_opts)
 vim.keymap.set('n', 'gW', function() vim.lsp.buf.workspace_symbol() end, lsp_keymap_opts)
 vim.keymap.set('n', 'gd', function() vim.lsp.buf.definition() end, lsp_keymap_opts)
-vim.keymap.set('n', 'ge', function() vim.diagnostic.goto_next() end, lsp_keymap_opts)
+vim.keymap.set('n', 'ge', function() vim.diagnostic.jump({ count = 1, float = true }) end, { desc = 'Next diagnostic' })
 vim.keymap.set('n', 'ga', function() vim.lsp.buf.code_action() end, lsp_keymap_opts)
 vim.keymap.set('n', 'gh', '<cmd>LspClangdSwitchSourceHeader<CR>', lsp_keymap_opts)
 
@@ -160,27 +167,259 @@ vim.keymap.set('n', '<leader>f', telescope_builtin.git_files, {})
 vim.keymap.set('n', '<leader>g', telescope_builtin.live_grep, {})
 vim.keymap.set('n', '<leader>r', telescope_builtin.resume, {})
 
-local function get_time_in_milliseconds()
-    local sec, usec = vim.loop.gettimeofday()
-    return (sec * 1000) + (usec / 1000)
+local compile_job = nil
+local cmake_compiler_cache = {}
+
+local function shell_argv(command)
+  local argv = { vim.o.shell }
+  vim.list_extend(argv, vim.fn.split(vim.o.shellcmdflag))
+  table.insert(argv, command)
+  return argv
 end
 
-local function compile_common(compile_command)
-  vim.cmd("wa")
-  local start_time = get_time_in_milliseconds()
-  vim.cmd(compile_command) -- Run :make
-  local end_time = get_time_in_milliseconds()
-  local qf_list = vim.fn.getqflist()
-  local qf_list_items = #qf_list
-  if qf_list_items > 0 then
-      vim.cmd("Trouble qflist open") -- Open the quickfix list if there are errors
+local function get_qflist_items()
+  return vim.fn.getqflist({ items = 1 }).items
+end
+
+local function current_buffer_path(buffer)
+  return vim.api.nvim_buf_get_name(buffer)
+end
+
+local function project_root(buffer)
+  return vim.fs.root(current_buffer_path(buffer), { 'build.sh', 'CMakeLists.txt', '.git' })
+end
+
+local function buster_build_directory()
+  return vim.env.BUSTER_BUILD_DIRECTORY or 'build'
+end
+
+local function cmake_cache_path(root)
+  return root .. '/' .. buster_build_directory() .. '/CMakeCache.txt'
+end
+
+local function file_mtime_nanoseconds(path)
+  local stat = vim.uv.fs_stat(path)
+  if stat == nil or stat.mtime == nil then
+    return nil
   end
 
-  print(string.format("Compiled in %.02f ms", end_time - start_time))
+  return stat.mtime.sec * 1000000000 + stat.mtime.nsec
 end
 
-local function just_compile()
-    compile_common("silent! make")
+local function cmake_cache_value(path, key)
+  if vim.fn.filereadable(path) == 0 then
+    return nil
+  end
+
+  for _, line in ipairs(vim.fn.readfile(path)) do
+    local value = line:match("^" .. key .. ":[^=]+=(.*)$")
+    if value ~= nil then
+      return value
+    end
+  end
+
+  return nil
 end
 
-vim.keymap.set('n', '<leader>c', just_compile, {})
+local function compiler_from_cmake(buffer, root)
+  if root == nil then
+    return nil
+  end
+
+  local path = cmake_cache_path(root)
+  local mtime = file_mtime_nanoseconds(path)
+  if mtime == nil then
+    return nil
+  end
+
+  local cached = cmake_compiler_cache[path]
+  if cached ~= nil and cached.mtime == mtime then
+    return cached.compiler
+  end
+
+  local keys = { 'CMAKE_C_COMPILER' }
+  if vim.bo[buffer].filetype == 'cpp' then
+    keys = { 'CMAKE_CXX_COMPILER', 'CMAKE_C_COMPILER' }
+  end
+
+  local compiler = nil
+  for _, key in ipairs(keys) do
+    local compiler_path = cmake_cache_value(path, key)
+    if compiler_path ~= nil and compiler_path ~= '' then
+      compiler = vim.fs.basename(compiler_path)
+      break
+    end
+  end
+
+  cmake_compiler_cache[path] = {
+    mtime = mtime,
+    compiler = compiler,
+  }
+
+  return compiler
+end
+
+local function set_cmake_compiler_options(buffer, root)
+  local compiler = compiler_from_cmake(buffer, root)
+
+  if compiler == 'tcc' then
+    vim.bo[buffer].errorformat = table.concat({
+      '%E%f:%l: error: %m',
+      '%W%f:%l: warning: %m',
+      '%I%f:%l: note: %m',
+    }, ',')
+  else
+    vim.api.nvim_buf_call(buffer, function()
+      vim.cmd('compiler gcc')
+    end)
+  end
+
+  return compiler
+end
+
+local function current_errorformat()
+  local local_efm = vim.bo.errorformat
+  if local_efm ~= nil and local_efm ~= "" then
+    return local_efm
+  end
+  return vim.o.errorformat
+end
+
+local function populate_qflist(title, output, efm, fallback_to_raw)
+  local lines = vim.split(output or "", "\n", { plain = true, trimempty = true })
+  vim.fn.setqflist({}, " ", { title = title, lines = lines, efm = efm })
+
+  local items = get_qflist_items()
+  if #items == 0 and fallback_to_raw and #lines > 0 then
+    local raw_items = {}
+    for _, line in ipairs(lines) do
+      table.insert(raw_items, { text = line })
+    end
+    vim.fn.setqflist({}, " ", { title = title, items = raw_items })
+    items = get_qflist_items()
+  end
+
+  return items
+end
+
+local function close_qflist_view()
+  local ok, trouble = pcall(require, "trouble")
+  if ok and trouble.is_open("qflist") then
+    trouble.close("qflist")
+  else
+    vim.cmd("cclose")
+  end
+end
+
+local function open_qflist_view()
+  local ok, trouble = pcall(require, "trouble")
+  if ok then
+    trouble.open({ mode = "qflist", focus = false })
+  else
+    vim.cmd("cwindow")
+  end
+end
+
+local function jump_to_first_valid_qf_item(items)
+  local first_valid = nil
+  for index, item in ipairs(items) do
+    if item.valid == 1 then
+      first_valid = first_valid or index
+      if string.upper(item.type or "") == "E" then
+        vim.cmd(("silent cc %d"):format(index))
+        return true
+      end
+    end
+  end
+  if first_valid then
+    vim.cmd(("silent cc %d"):format(first_valid))
+    return true
+  end
+  return false
+end
+
+local function run_async_compile(command, title, options)
+  options = options or {}
+
+  if compile_job then
+    vim.notify(("%s already running"):format(compile_job.title), vim.log.levels.WARN)
+    return
+  end
+
+  vim.cmd("silent! wall")
+
+  local efm = current_errorformat()
+  vim.notify(("%s started"):format(title), vim.log.levels.INFO)
+  local start_time = vim.uv.hrtime()
+  compile_job = { title = title }
+
+  vim.system(shell_argv(command .. " 2>&1"), { cwd = options.cwd, text = true }, function(obj)
+    vim.schedule(function()
+      compile_job = nil
+      local elapsed_ms = (vim.uv.hrtime() - start_time) / 1000000
+      local end_date = os.date("%H:%M:%S")
+
+      local items = populate_qflist(title, obj.stdout or "", efm, obj.code ~= 0)
+
+      if #items == 0 then
+        close_qflist_view()
+      else
+        open_qflist_view()
+        jump_to_first_valid_qf_item(items)
+      end
+
+      vim.notify(("%s finished (returned %d) in %.1f ms at %s"):format(title, obj.code, elapsed_ms, end_date), vim.log.levels.INFO)
+    end)
+  end)
+end
+
+vim.api.nvim_create_autocmd('QuickFixCmdPre', {
+  pattern = 'make',
+  callback = function() vim.cmd('silent! wall') end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'rust',
+  callback = function()
+    vim.cmd('compiler cargo')
+    vim.keymap.set('n', '<leader>c', function() run_async_compile('cargo check', 'cargo check') end,
+      { buffer = true, desc = 'cargo check' })
+    vim.keymap.set('n', '<leader>b', function() run_async_compile('cargo build', 'cargo build') end,
+      { buffer = true, desc = 'cargo build' })
+    vim.keymap.set('n', '<leader>r', '<cmd>silent make run<cr>',
+      { buffer = true, desc = 'cargo run' })
+  end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'zig',
+  callback = function()
+    vim.cmd('compiler zig')
+    vim.keymap.set('n', '<leader>c', function() run_async_compile('zig build', 'zig build') end,
+      { buffer = true, desc = 'zig build' })
+    vim.keymap.set('n', '<leader>b', function() run_async_compile('zig build', 'zig build') end,
+      { buffer = true, desc = 'zig build' })
+    vim.keymap.set('n', '<leader>r', '<cmd>make run<cr>', { buffer = true, desc = 'zig run' })
+  end,
+})
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'c', 'cpp' },
+  callback = function(args)
+    local root = project_root(args.buf)
+    if root == nil then
+      return
+    end
+
+    set_cmake_compiler_options(args.buf, root)
+    vim.bo[args.buf].makeprg = './build.sh --quiet'
+
+    vim.keymap.set('n', '<leader>c', function()
+      run_async_compile('./build.sh --quiet', 'build.sh', { cwd = root })
+    end, { buffer = args.buf, desc = 'build.sh --quiet' })
+
+    vim.keymap.set('n', '<leader>b', function()
+      run_async_compile('./build.sh --quiet', 'build.sh', { cwd = root })
+    end, { buffer = args.buf, desc = 'build.sh --quiet' })
+  end,
+})
