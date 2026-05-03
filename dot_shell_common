@@ -58,10 +58,10 @@ function ccd() {
 }
 
 # Zig-related aliases
-alias zb="zig build --prominent-compile-errors"
-alias zr="zig build run --prominent-compile-errors"
-alias zd="zig build debug --prominent-compile-errors"
-alias zt="zig build test --prominent-compile-errors"
+alias zb="zig build"
+alias zr="zig build run"
+alias zd="zig build debug"
+alias zt="zig build test"
 # Use the Zig source binary
 alias zigs="$MY_ZIG_SOURCE_BIN_PATH/zig"
 
