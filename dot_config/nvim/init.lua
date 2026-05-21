@@ -77,6 +77,97 @@ require("lazy").setup({
 
 vim.cmd([[colorscheme gruvbox]])
 
+local function path_exists(path)
+  return path ~= nil and vim.uv.fs_stat(path) ~= nil
+end
+
+local function current_buffer_path(buffer)
+  return vim.api.nvim_buf_get_name(buffer)
+end
+
+local function project_root(buffer)
+  return vim.fs.root(current_buffer_path(buffer), {
+    'build.py',
+    'build.sh',
+    'compile_commands.json',
+    'compile_flags.txt',
+    'CMakeLists.txt',
+    '.git',
+  })
+end
+
+local function configured_build_directory()
+  return vim.env.BUSTER_BUILD_DIRECTORY or 'build'
+end
+
+local function project_path(root, path)
+  if path == nil or path == '' then
+    return root
+  end
+
+  if root == nil or vim.startswith(path, '/') then
+    return path
+  end
+
+  return root .. '/' .. path
+end
+
+local function build_directory_path(root)
+  return project_path(root, configured_build_directory())
+end
+
+local function find_compilation_database_dir(root)
+  if root == nil then
+    return nil
+  end
+
+  local candidates = {
+    root,
+    build_directory_path(root),
+    root .. '/build',
+    root .. '/cmake-build-debug',
+    root .. '/cmake-build-release',
+  }
+  local seen = {}
+
+  for _, candidate in ipairs(candidates) do
+    if candidate ~= nil and not seen[candidate] then
+      seen[candidate] = true
+      if path_exists(candidate .. '/compile_commands.json') then
+        return candidate
+      end
+    end
+  end
+
+  return nil
+end
+
+local function clangd_root_dir(buffer, on_dir)
+  local root = project_root(buffer)
+  on_dir(root or vim.fs.dirname(current_buffer_path(buffer)) or vim.fn.getcwd())
+end
+
+local function clangd_cmd(dispatchers, config)
+  local cmd = { 'clangd' }
+  local compilation_database_dir = find_compilation_database_dir(config.root_dir)
+
+  if compilation_database_dir ~= nil then
+    table.insert(cmd, '--compile-commands-dir=' .. compilation_database_dir)
+  end
+
+  return vim.lsp.rpc.start(cmd, dispatchers, { cwd = config.root_dir })
+end
+
+local function python_build_command(root)
+  return table.concat({
+    'python3',
+    vim.fn.shellescape(project_path(root, 'build.py')),
+    '--build-directory',
+    vim.fn.shellescape(build_directory_path(root)),
+    '--quiet',
+  }, ' ')
+end
+
 local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
 vim.lsp.config("zls", {
@@ -93,6 +184,19 @@ vim.lsp.config("zls", {
 
 vim.lsp.config("clangd", {
     capabilities = capabilities,
+    cmd = clangd_cmd,
+    root_dir = clangd_root_dir,
+    root_markers = {
+      '.clangd',
+      '.clang-tidy',
+      '.clang-format',
+      'compile_commands.json',
+      'compile_flags.txt',
+      'build.py',
+      'build.sh',
+      'CMakeLists.txt',
+      '.git',
+    },
 })
 
 vim.lsp.config("rust_analyzer", {
@@ -181,20 +285,8 @@ local function get_qflist_items()
   return vim.fn.getqflist({ items = 1 }).items
 end
 
-local function current_buffer_path(buffer)
-  return vim.api.nvim_buf_get_name(buffer)
-end
-
-local function project_root(buffer)
-  return vim.fs.root(current_buffer_path(buffer), { 'build.sh', 'CMakeLists.txt', '.git' })
-end
-
-local function buster_build_directory()
-  return vim.env.BUSTER_BUILD_DIRECTORY or 'build'
-end
-
 local function cmake_cache_path(root)
-  return root .. '/' .. buster_build_directory() .. '/CMakeCache.txt'
+  return build_directory_path(root) .. '/CMakeCache.txt'
 end
 
 local function file_mtime_nanoseconds(path)
@@ -411,15 +503,17 @@ vim.api.nvim_create_autocmd('FileType', {
       return
     end
 
+    local build_command = python_build_command(root)
+
     set_cmake_compiler_options(args.buf, root)
-    vim.bo[args.buf].makeprg = './build.sh --quiet'
+    vim.bo[args.buf].makeprg = build_command
 
     vim.keymap.set('n', '<leader>c', function()
-      run_async_compile('./build.sh --quiet', 'build.sh', { cwd = root })
-    end, { buffer = args.buf, desc = 'build.sh --quiet' })
+      run_async_compile(build_command, 'python3 build.py', { cwd = root })
+    end, { buffer = args.buf, desc = 'build.py --quiet' })
 
     vim.keymap.set('n', '<leader>b', function()
-      run_async_compile('./build.sh --quiet', 'build.sh', { cwd = root })
-    end, { buffer = args.buf, desc = 'build.sh --quiet' })
+      run_async_compile(build_command, 'python3 build.py', { cwd = root })
+    end, { buffer = args.buf, desc = 'build.py --quiet' })
   end,
 })
