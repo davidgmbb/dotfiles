@@ -158,16 +158,6 @@ local function clangd_cmd(dispatchers, config)
   return vim.lsp.rpc.start(cmd, dispatchers, { cwd = config.root_dir })
 end
 
-local function python_build_command(root)
-  return table.concat({
-    'python3',
-    vim.fn.shellescape(project_path(root, 'build.py')),
-    '--build-directory',
-    vim.fn.shellescape(build_directory_path(root)),
-    '--quiet',
-  }, ' ')
-end
-
 local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
 vim.lsp.config("zls", {
@@ -503,17 +493,23 @@ vim.api.nvim_create_autocmd('FileType', {
       return
     end
 
-    local build_command = python_build_command(root)
+    local build_command = table.concat({
+        'python3',
+        vim.fn.shellescape(project_path(root, 'build.py')),
+        '--build-directory',
+        vim.fn.shellescape(build_directory_path(root)),
+        '--quiet',
+    }, ' ')
 
     set_cmake_compiler_options(args.buf, root)
     vim.bo[args.buf].makeprg = build_command
 
     vim.keymap.set('n', '<leader>c', function()
-      run_async_compile(build_command, 'python3 build.py', { cwd = root })
+      run_async_compile(build_command, 'python3 build.py --quiet', { cwd = root })
     end, { buffer = args.buf, desc = 'build.py --quiet' })
 
     vim.keymap.set('n', '<leader>b', function()
-      run_async_compile(build_command, 'python3 build.py', { cwd = root })
+      run_async_compile(build_command, 'python3 build.py --quiet', { cwd = root })
     end, { buffer = args.buf, desc = 'build.py --quiet' })
   end,
 })
