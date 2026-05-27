@@ -494,10 +494,7 @@ vim.api.nvim_create_autocmd('FileType', {
     end
 
     local build_command = table.concat({
-        'python3',
-        vim.fn.shellescape(project_path(root, 'build.py')),
-        '--build-directory',
-        vim.fn.shellescape(build_directory_path(root)),
+        './build.sh',
         '--quiet',
     }, ' ')
 
@@ -505,11 +502,11 @@ vim.api.nvim_create_autocmd('FileType', {
     vim.bo[args.buf].makeprg = build_command
 
     vim.keymap.set('n', '<leader>c', function()
-      run_async_compile(build_command, 'python3 build.py --quiet', { cwd = root })
-    end, { buffer = args.buf, desc = 'build.py --quiet' })
+      run_async_compile(build_command, './build.sh --quiet', { cwd = root })
+    end, { buffer = args.buf, desc = './build.sh --quiet' })
 
     vim.keymap.set('n', '<leader>b', function()
-      run_async_compile(build_command, 'python3 build.py --quiet', { cwd = root })
-    end, { buffer = args.buf, desc = 'build.py --quiet' })
+      run_async_compile(build_command, './build.sh --quiet', { cwd = root })
+    end, { buffer = args.buf, desc = './build.sh --quiet' })
   end,
 })
