@@ -204,10 +204,18 @@ vim.lsp.config("ols", {
   capabilities = capabilities,
 })
 
-vim.lsp.enable("zls")
-vim.lsp.enable("clangd")
-vim.lsp.enable("rust_analyzer")
-vim.lsp.enable("ols")
+local function enable_lsp_if_available(name, executable)
+    if vim.fn.executable(executable) == 1 then
+        vim.lsp.enable(name)
+    end
+end
+
+if vim.fn.executable("zig") == 1 then
+    enable_lsp_if_available("zls", "zls")
+end
+enable_lsp_if_available("clangd", "clangd")
+enable_lsp_if_available("rust_analyzer", "rust-analyzer")
+enable_lsp_if_available("ols", "ols")
 
 local cmp = require("cmp")
 cmp.setup({

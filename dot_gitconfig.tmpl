@@ -4,7 +4,6 @@
     username = davidgmbb
 [core]
     editor = nvim
-    lf = open
     eol = lf
     autocrlf = false
 [github]
@@ -17,6 +16,7 @@
     process = git-lfs filter-process
     required = true
 [credential]
-    helper = store
+    helper =
+    helper = {{ if eq .chezmoi.os "darwin" }}osxkeychain{{ else }}libsecret{{ end }}
 [push]
     autoSetupRemote = true

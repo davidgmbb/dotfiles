@@ -1,13 +1,20 @@
+# Environment and aliases shared by Bash and Zsh.
+# Child shells inherit the SDK environment; do not prepend its paths again.
+if [ -z "${VULKAN_SDK:-}" ] && [ -r /opt/vulkan-sdk/current/setup-env.sh ]; then
+    . /opt/vulkan-sdk/current/setup-env.sh
+fi
+
 ## PATH-RELATED VARIABLES
-# Homebrew-related paths
-source /opt/vulkan-sdk/current/setup-env.sh
 
 export BUSTER_DCO_SIGN_OFF=davidgmbb
 
-export MY_HOMEBREW_ROOT_PATH="/opt/homebrew"
+case "${OSTYPE:-}" in
+    darwin*) export MY_HOMEBREW_ROOT_PATH="/opt/homebrew" ;;
+    *) export MY_HOMEBREW_ROOT_PATH="/home/linuxbrew/.linuxbrew" ;;
+esac
 export MY_HOMEBREW_BIN_PATH="$MY_HOMEBREW_ROOT_PATH/bin"
 export MY_HOMEBREW_SBIN_PATH="$MY_HOMEBREW_ROOT_PATH/sbin"
-export MY_HOMEBREW_RELATED_PATHS=$MY_HOMEBREW_BIN_PATH:$MY_HOMEBREW_SBIN_PATH
+export MY_HOMEBREW_RELATED_PATHS="$MY_HOMEBREW_BIN_PATH:$MY_HOMEBREW_SBIN_PATH"
 
 export MY_DEV_DIR="$HOME/dev"
 export MY_NAT_SRC_DIR="$MY_DEV_DIR/nativity"
@@ -23,7 +30,7 @@ export MY_ZLS_SOURCE_PATH="$MY_DEV_DIR/zls"
 export MY_ZLS_SOURCE_BIN_PATH="$MY_ZLS_SOURCE_PATH/$MY_ZIG_RELATIVE_BIN_PATH"
 export MY_ZIG_SOURCE_PATH="$MY_DEV_DIR/zig"
 export MY_ZIG_SOURCE_BIN_PATH="$MY_ZIG_SOURCE_PATH/build-release/stage3/bin"
-export MY_ZIG_RELATED_PATHS=$MY_ZIG_SOURCE_BIN_PATH:$MY_ZIGUP_BIN_PATH:$MY_ZLS_SOURCE_BIN_PATH
+export MY_ZIG_RELATED_PATHS="$MY_ZIG_SOURCE_BIN_PATH:$MY_ZLS_SOURCE_BIN_PATH"
 
 export MY_OLS_SOURCE_PATH="$MY_DEV_DIR/ols"
 
@@ -31,7 +38,7 @@ export MY_OLS_SOURCE_PATH="$MY_DEV_DIR/ols"
 export MY_NEOVIM_BIN_PATH="$HOME/programs/neovim/bin"
 
 # GF-related paths
-export MY_GF_SOURCE_PATH="/$HOME/source/gf"
+export MY_GF_SOURCE_PATH="$HOME/source/gf"
 
 # My scripts path
 export MY_SCRIPTS_PATH="$MY_DEV_DIR/scripts"
@@ -39,8 +46,23 @@ export MY_SCRIPTS_PATH="$MY_DEV_DIR/scripts"
 # Nat path
 export MY_NAT_PATH="$MY_NAT_SRC_DIR/zig-out/bin"
 
-# PATH
-export PATH="/opt/shader-slang-bin/bin:$HOME/.dotnet/tools:$HOME/Downloads/zig-x86_64-linux-0.16.0-dev.3146+0606af509:$HOME/bin:$MY_OLS_SOURCE_PATH:$MY_NAT_PATH:$MY_PROGRAMS_BIN_DIR:$MY_QEMU_BIN_PATH:$MY_NEOVIM_BIN_PATH:$MY_GF_SOURCE_PATH:$MY_ZIG_RELATED_PATHS:$MY_HOMEBREW_BIN_PATH:$MY_SCRIPTS_PATH:$PATH"
+# Keep the preferred order, skipping empty, missing, and duplicate directories.
+# Normalize inherited PATH entries too, so nested shells remain stable.
+_dotfiles_set_path() {
+    local remaining="$1:" entry cleaned=""
+    while [ -n "$remaining" ]; do
+        entry=${remaining%%:*}
+        remaining=${remaining#*:}
+        [ -n "$entry" ] && [ -d "$entry" ] || continue
+        case ":$cleaned:" in
+            *":$entry:"*) ;;
+            *) cleaned="${cleaned:+$cleaned:}$entry" ;;
+        esac
+    done
+    export PATH="$cleaned"
+}
+_dotfiles_set_path "/opt/shader-slang-bin/bin:$HOME/.dotnet/tools:$HOME/.local/bin:$HOME/bin:$MY_OLS_SOURCE_PATH:$MY_NAT_PATH:$MY_PROGRAMS_BIN_DIR:${MY_QEMU_BIN_PATH:-}:$MY_NEOVIM_BIN_PATH:$MY_GF_SOURCE_PATH:$MY_ZIG_SOURCE_BIN_PATH:${MY_ZIGUP_BIN_PATH:-}:$MY_ZLS_SOURCE_BIN_PATH:$MY_HOMEBREW_RELATED_PATHS:$MY_SCRIPTS_PATH:$HOME/.cargo/bin:${PATH:-}"
+unset -f _dotfiles_set_path
 
 ## PERSONAL PROJECTS
 export MY_RISE_PATH="$MY_DEV_DIR/rise"
@@ -57,8 +79,12 @@ export CMAKE_GENERATOR=Ninja
 
 ## ALIASES
 # Function-like aliases
-function ccd() {
-    mkdir -p $1 && cd $1
+ccd() {
+    if [ "$#" -ne 1 ]; then
+        printf 'Usage: ccd DIRECTORY\n' >&2
+        return 2
+    fi
+    mkdir -p -- "$1" && cd -- "$1"
 }
 
 # Zig-related aliases
@@ -105,7 +131,9 @@ alias egrep='egrep --color=auto'
 alias cdn="cd $MY_NAT_SRC_DIR"
 
 gcgh() {
-    GH_USER="$1"
-    GH_PROJECT="$2"
-    git clone "https://github.com/$GH_USER/$GH_PROJECT.git"
+    if [ "$#" -ne 2 ]; then
+        printf 'Usage: gcgh OWNER REPOSITORY\n' >&2
+        return 2
+    fi
+    git clone "https://github.com/$1/$2.git"
 }

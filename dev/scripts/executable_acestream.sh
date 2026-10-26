@@ -1,4 +1,4 @@
 #!/bin/sh
 set -ex
 
-yay -Sy --noconfirm acestream-launcher acestream-engine
+yay -Syu --needed --noconfirm acestream-launcher acestream-engine

@@ -3,11 +3,13 @@
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
   "theme": "dark",
+  "agentPushNotifEnabled": true,
   "autoMode": {
     "allow": [
       "$defaults",
       "Enabling auto-merge (merge-queue enqueue) on buster14a/buster pull requests via gh api PUT .../ccr/auto_merge",
       "Pushing merge commits (no force, no rebase) of main into stale buster14a/buster pull-request branches"
     ]
-  }
+  },
+  "enableWorkflows": true
 }
