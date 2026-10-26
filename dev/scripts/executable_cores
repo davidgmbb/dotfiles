@@ -1,0 +1,364 @@
+#!/usr/bin/env bash
+# cores: a first-come, first-served queue of physical-core slots for the
+# multicore jobs that agents and people run on this machine. See `cores help`.
+#
+# State lives in $XDG_RUNTIME_DIR/cores (gone at reboot): a sequence counter, a
+# ticket per waiting job (waiting/) and per admitted one (running/), and a lock
+# file per physical core (slot.N). An admitted job holds a flock on each of its
+# cores' slot files through descriptors it inherits, so its cores come free
+# when the last process holding them ends, however it ends. Admission happens
+# only under queue.lock and only for the oldest waiting ticket, so the queue is
+# strictly first come, first served: a small job doesn't pass a large one.
+
+set -u
+shopt -s nullglob
+
+state=${CORES_STATE:-${XDG_RUNTIME_DIR:-/tmp/cores-$UID}/cores}
+config=${CORES_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/cores}
+poll=${CORES_POLL:-0.5}
+default_reserve=${CORES_DEFAULT_RESERVE:-2}
+
+die() { printf 'cores: %s\n' "$*" >&2; exit 2; }
+note() { printf 'cores: %s\n' "$*" >&2; }
+
+usage() {
+    cat <<'EOF'
+cores: a first-come, first-served queue of physical cores for multicore jobs.
+
+  cores -n K [options] [--] COMMAND...   run COMMAND on K physical cores
+  cores --all [options] [--] COMMAND...  run COMMAND on every core of the pool
+  cores status                           show the pool, running and waiting jobs
+  cores reserve [N]                      show, or set, the cores kept for
+                                         interactive use (the lowest-numbered)
+  cores away                             reserve none (the machine is idle)
+  cores here                             reserve the default (2)
+
+Options (each also read from the environment variable in brackets):
+  --title T     what the job is for, shown in status       [CORES_TITLE]
+  --link L      its session, PR or issue                   [CORES_LINK]
+  --owner O     who runs it                                [CORES_OWNER]
+  --priority P  low (default: niceness 19, best-effort I/O 7) or normal,
+                which keeps the caller's                   [CORES_PRIORITY]
+
+A job waits until every older ticket has been admitted and K cores of the pool
+are free, then runs pinned to both SMT threads of each of its cores, with
+CORES (its core count), CORES_CPUS (its CPU list) and CORES_HELD set. Tools that
+size themselves by the CPUs they may run on (nproc, the parallel runner, lanes)
+then fit the grant. A command run under a job that holds cores (CORES_HELD)
+runs at once on the job's cores. A request past the pool gets the whole pool.
+Hold cores per run, not around a series of runs.
+EOF
+}
+
+# The physical cores, each a list of its CPUs, ordered by their first CPU.
+# CORES_TOPOLOGY ("0,8 1,9 ...") replaces the machine's, for tests.
+load_topology() {
+    core_cpus=()
+    if [[ -n ${CORES_TOPOLOGY:-} ]]; then
+        read -r -a core_cpus <<< "$CORES_TOPOLOGY"
+    else
+        local n list
+        local -A seen=()
+        while read -r n; do
+            [[ -r /sys/devices/system/cpu/cpu$n/topology/thread_siblings_list ]] || continue
+            list=$(< "/sys/devices/system/cpu/cpu$n/topology/thread_siblings_list")
+            [[ -n ${seen[$list]:-} ]] && continue
+            seen[$list]=1
+            core_cpus+=("$list")
+        done < <(ls /sys/devices/system/cpu | sed -n 's/^cpu\([0-9][0-9]*\)$/\1/p' | sort -n)
+    fi
+    ncores=${#core_cpus[@]}
+    (( ncores > 0 )) || die "no cores found"
+}
+
+# The cores kept for interactive use: cores 0 to reserve - 1, never all of them.
+load_reserve() {
+    reserve=$default_reserve
+    [[ -r $config/reserve ]] && reserve=$(< "$config/reserve")
+    [[ $reserve =~ ^[0-9]+$ ]] || reserve=$default_reserve
+    (( reserve > ncores - 1 )) && reserve=$(( ncores - 1 ))
+    pool=$(( ncores - reserve ))
+}
+
+open_state() {
+    mkdir -p "$state/waiting" "$state/running" "$state/tmp" || die "can't make $state"
+    exec {qfd}>> "$state/queue.lock" || die "can't open $state/queue.lock"
+}
+
+# A process's start time, which tells it apart from a later one with its PID.
+proc_start() {
+    local s
+    { s=$(< "/proc/$1/stat"); } 2> /dev/null || return 1
+    s=${s##*) }
+    local -a f
+    read -r -a f <<< "$s"
+    printf '%s' "${f[19]}"
+}
+
+alive() {
+    local s
+    s=$(proc_start "$1") || return 1
+    [[ $s == "$2" ]]
+}
+
+declare -A T
+read_ticket() {
+    T=()
+    local k v
+    while IFS='=' read -r k v; do
+        T[$k]=$v
+    done < "$1"
+}
+
+# write_ticket PATH KEY VALUE..., replacing PATH at once.
+write_ticket() {
+    local path=$1 tmp="$state/tmp/$$"
+    shift
+    : > "$tmp"
+    while (( $# >= 2 )); do
+        printf '%s=%s\n' "$1" "${2//$'\n'/ }" >> "$tmp"
+        shift 2
+    done
+    mv -f "$tmp" "$path"
+}
+
+slot_free() {
+    local fd free=1
+    exec {fd}>> "$state/slot.$1"
+    flock -n "$fd" || free=0
+    exec {fd}>&-
+    (( free ))
+}
+
+# Under queue.lock: drop the tickets of jobs that have gone. A running ticket
+# whose process ended stays while processes it left hold its cores (orphans).
+clean_stale() {
+    local f i held
+    for f in "$state"/waiting/*; do
+        read_ticket "$f" 2> /dev/null || continue
+        alive "${T[pid]:-0}" "${T[start]:-}" || rm -f "$f"
+    done
+    for f in "$state"/running/*; do
+        read_ticket "$f" 2> /dev/null || continue
+        alive "${T[pid]:-0}" "${T[start]:-}" && continue
+        held=0
+        for i in ${T[slots]:-}; do
+            slot_free "$i" || held=1
+        done
+        (( held )) || rm -f "$f"
+    done
+}
+
+# Under queue.lock: take WANT free cores of the pool, all or none.
+try_take() {
+    local want=$1 i fd
+    taken_fds=()
+    taken_slots=()
+    for (( i = reserve; i < ncores && ${#taken_slots[@]} < want; i++ )); do
+        exec {fd}>> "$state/slot.$i"
+        if flock -n "$fd"; then
+            taken_fds+=("$fd")
+            taken_slots+=("$i")
+        else
+            exec {fd}>&-
+        fi
+    done
+    if (( ${#taken_slots[@]} < want )); then
+        for fd in "${taken_fds[@]}"; do
+            exec {fd}>&-
+        done
+        return 1
+    fi
+}
+
+duration() {
+    local s=$1
+    if (( s >= 3600 )); then
+        printf '%dh%02dm%02ds' $(( s / 3600 )) $(( s % 3600 / 60 )) $(( s % 60 ))
+    elif (( s >= 60 )); then
+        printf '%dm%02ds' $(( s / 60 )) $(( s % 60 ))
+    else
+        printf '%ds' "$s"
+    fi
+}
+
+describe() {
+    local who=${T[owner]:-?}
+    [[ -n ${T[title]:-} ]] && who+=" \"${T[title]}\""
+    [[ -n ${T[link]:-} ]] && who+=" <${T[link]}>"
+    printf '%s' "$who"
+}
+
+# Under queue.lock: what a waiting ticket waits behind, which changes only when
+# the queue does.
+waiting_behind() {
+    local mine=$1 f ahead=0 text=""
+    for f in "$state"/waiting/*; do
+        [[ ${f##*/} < $mine ]] && (( ahead++ ))
+    done
+    for f in "$state"/running/*; do
+        read_ticket "$f" 2> /dev/null || continue
+        text+="; #$((10#${f##*/})) $(describe) on ${T[cores]} cores"
+    done
+    printf '%d ahead in the queue%s' "$ahead" "$text"
+}
+
+run_job() {
+    local req="" title=${CORES_TITLE:-} link=${CORES_LINK:-}
+    local owner=${CORES_OWNER:-${USER:-$UID}} priority=${CORES_PRIORITY:-low}
+    while (( $# )); do
+        case $1 in
+            -n|--cores|--title|--link|--owner|--priority)
+                (( $# >= 2 )) || die "$1 needs a value"
+                case $1 in
+                    -n|--cores) req=$2 ;;
+                    --title) title=$2 ;;
+                    --link) link=$2 ;;
+                    --owner) owner=$2 ;;
+                    --priority) priority=$2 ;;
+                esac
+                shift 2 ;;
+            -n*) req=${1#-n}; shift ;;
+            --cores=*) req=${1#*=}; shift ;;
+            --title=*) title=${1#*=}; shift ;;
+            --link=*) link=${1#*=}; shift ;;
+            --owner=*) owner=${1#*=}; shift ;;
+            --priority=*) priority=${1#*=}; shift ;;
+            --all) req=all; shift ;;
+            --) shift; break ;;
+            -*) die "unknown option $1 (cores help)" ;;
+            *) break ;;
+        esac
+    done
+    (( $# )) || die "no command (cores help)"
+    [[ $req == all || $req =~ ^[1-9][0-9]*$ ]] || die "say how many cores: -n K or --all"
+    [[ $priority == low || $priority == normal ]] || die "--priority is low or normal"
+
+    # Nested: the job's own cores already bound this process.
+    if [[ -n ${CORES_HELD:-} ]]; then
+        [[ -e $state/running/$CORES_HELD ]] && exec "$@"
+        note "CORES_HELD=$CORES_HELD names no running job; queueing"
+        unset CORES CORES_CPUS CORES_HELD
+    fi
+
+    load_topology
+    open_state
+    flock "$qfd"
+    local seq=0
+    [[ -r $state/seq ]] && seq=$(< "$state/seq")
+    [[ $seq =~ ^[0-9]+$ ]] || seq=0
+    seq=$(( seq + 1 ))
+    printf '%d\n' "$seq" > "$state/seq"
+    name=$(printf '%012d' "$seq")
+    local queued=$EPOCHSECONDS
+    write_ticket "$state/waiting/$name" pid $$ start "$(proc_start $$)" cores "$req" \
+        owner "$owner" title "$title" link "$link" queued "$queued" cwd "$PWD" command "$*"
+    flock -u "$qfd"
+    trap 'rm -f "$state/waiting/$name"' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    trap 'exit 129' HUP
+
+    local last="" behind want cpus i
+    local -a waiting
+    while :; do
+        flock "$qfd"
+        clean_stale
+        load_reserve
+        waiting=("$state"/waiting/*)
+        if [[ ${waiting[0]##*/} == "$name" ]]; then
+            want=$req
+            [[ $want == all ]] && want=$pool
+            (( want > pool )) && want=$pool
+            if try_take "$want"; then
+                cpus=""
+                for i in "${taken_slots[@]}"; do
+                    cpus+=${cpus:+,}${core_cpus[i]}
+                done
+                write_ticket "$state/running/$name" pid $$ start "$(proc_start $$)" cores "$want" \
+                    owner "$owner" title "$title" link "$link" queued "$queued" \
+                    granted "$EPOCHSECONDS" slots "${taken_slots[*]}" cpus "$cpus" \
+                    cwd "$PWD" command "$*"
+                rm -f "$state/waiting/$name"
+                trap - EXIT INT TERM HUP
+                flock -u "$qfd"
+                break
+            fi
+        fi
+        behind=$(waiting_behind "$name")
+        flock -u "$qfd"
+        if [[ $behind != "$last" ]]; then
+            note "#$seq waits for $req core(s): $behind"
+            last=$behind
+        fi
+        sleep "$poll"
+    done
+
+    exec {qfd}>&-
+    taskset -pc "$cpus" $$ > /dev/null || die "can't pin to CPUs $cpus"
+    if [[ $priority == low ]]; then
+        renice -n 19 -p $$ > /dev/null
+        ionice -c 2 -n 7 -p $$
+    fi
+    export CORES=$want CORES_CPUS=$cpus CORES_HELD=$name
+    (( EPOCHSECONDS > queued )) && note "#$seq granted $want core(s) (CPUs $cpus) after $(duration $(( EPOCHSECONDS - queued )))"
+    # The command takes this process, its ticket's PID, and the slots' descriptors.
+    exec "$@"
+}
+
+status() {
+    load_topology
+    load_reserve
+    open_state
+    flock "$qfd"
+    clean_stale
+    local i reserved_cpus="" free=0 f now=$EPOCHSECONDS orphan
+    for (( i = 0; i < reserve; i++ )); do
+        reserved_cpus+=${reserved_cpus:+,}${core_cpus[i]}
+    done
+    for (( i = reserve; i < ncores; i++ )); do
+        slot_free "$i" && (( free++ ))
+    done
+    printf '%d physical cores; %d reserved for interactive use%s; pool of %d, %d free\n' \
+        "$ncores" "$reserve" "${reserved_cpus:+ (CPUs $reserved_cpus)}" "$pool" "$free"
+    printf 'running:\n'
+    for f in "$state"/running/*; do
+        read_ticket "$f" 2> /dev/null || continue
+        orphan=""
+        alive "${T[pid]}" "${T[start]}" || orphan=" [pid ${T[pid]} ended; processes it left hold its cores]"
+        printf '  #%d  %d core(s), CPUs %s, for %s  pid %s  %s%s\n    %s: %s\n' \
+            "$((10#${f##*/}))" "${T[cores]}" "${T[cpus]}" "$(duration $(( now - T[granted] )))" \
+            "${T[pid]}" "$(describe)" "$orphan" "${T[cwd]}" "${T[command]}"
+    done
+    printf 'waiting:\n'
+    for f in "$state"/waiting/*; do
+        read_ticket "$f" 2> /dev/null || continue
+        printf '  #%d  %s core(s), for %s  pid %s  %s\n    %s: %s\n' \
+            "$((10#${f##*/}))" "${T[cores]}" "$(duration $(( now - T[queued] )))" \
+            "${T[pid]}" "$(describe)" "${T[cwd]}" "${T[command]}"
+    done
+    flock -u "$qfd"
+}
+
+set_reserve() {
+    load_topology
+    if (( $# == 0 )); then
+        load_reserve
+        printf '%d\n' "$reserve"
+        return
+    fi
+    [[ $1 =~ ^[0-9]+$ ]] || die "reserve takes a number of cores"
+    (( $1 <= ncores - 1 )) || die "at most $(( ncores - 1 )) of $ncores cores can be reserved"
+    mkdir -p "$config" || die "can't make $config"
+    printf '%d\n' "$1" > "$config/reserve"
+    note "reserving $1 core(s) for interactive use; the pool is $(( ncores - $1 ))"
+}
+
+case ${1:-} in
+    ""|help|-h|--help) usage; [[ -n ${1:-} ]] || exit 2 ;;
+    status) shift; status ;;
+    reserve) shift; set_reserve "$@" ;;
+    away) set_reserve 0 ;;
+    here) set_reserve "$default_reserve" ;;
+    *) run_job "$@" ;;
+esac

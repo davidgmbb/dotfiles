@@ -2,6 +2,8 @@
 # Homebrew-related paths
 source /opt/vulkan-sdk/current/setup-env.sh
 
+export BUSTER_DCO_SIGN_OFF=davidgmbb
+
 export MY_HOMEBREW_ROOT_PATH="/opt/homebrew"
 export MY_HOMEBREW_BIN_PATH="$MY_HOMEBREW_ROOT_PATH/bin"
 export MY_HOMEBREW_SBIN_PATH="$MY_HOMEBREW_ROOT_PATH/sbin"
